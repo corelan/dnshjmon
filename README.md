@@ -10,13 +10,14 @@ python dnshjmon.py [arguments]
 
 Valid arguments:
 
-> -h                  : show help
-> -d <dns configfile> : full path to dns config file.
->                       Defaults to dnshjmon_dns.conf in current folder
-> -s <smtp configfile : full path to smtp config file.
->                       Defaults to dnshjmon_smtp.conf in current folder
-> -mail               : Test e-mail configuration
-
+<
+ -h                  : show help
+ -d <dns configfile> : full path to dns config file.
+                       Defaults to dnshjmon_dns.conf in current folder
+ -s <smtp configfile : full path to smtp config file.
+                       Defaults to dnshjmon_smtp.conf in current folder
+ -mail               : Test e-mail configuration
+>
 
 DNS Config file
 ----------------
