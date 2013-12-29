@@ -90,7 +90,11 @@ def checkdns(dnsconfigfile,mailconfigfile):
 	cDNS = DNSConfig(dnsconfigfile)
 	dnsscope = cDNS.getConfig()
 	for dnscheck in dnsscope:
-		thisresult = socket.gethostbyname(dnscheck)
+		try:
+			thisresult = socket.gethostbyname(dnscheck)
+		except:
+			print "    *** Error looking up IP for %s***" % dnscheck
+			thisresult = "0.0.0.0"
 		siteok = False
 		if thisresult in dnsscope[dnscheck]:
 			siteok = True
