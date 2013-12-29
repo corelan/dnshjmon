@@ -124,7 +124,8 @@ def checkdns(dnsconfigfile, mailconfigfile):
         mailhandler = Mailer(mailconfigfile)
         mailhandler.sendmail(mailbody)
     print ""
-    print "[+] Done checking, tested %d sites, reported %d IP mismatches" % (len(dnsscope), len(toreport))
+    print "[+] Done checking, tested %d sites, reported %d IP mismatches" % \
+          (len(dnsscope), len(toreport))
     return
 
 
@@ -406,7 +407,8 @@ class Mailer:
 
         msg['Subject'] = '%s - %s' % (gethostname(), mailsubject)
         msg['From'] = self.fromaddress
-        msg['Disposition-Notification-To'] = self.fromaddress    # uncomment this if you don't want return receipts
+        # uncomment the next line if you don't want return receipts
+        msg['Disposition-Notification-To'] = self.fromaddress
         msg['To'] = self.to
         msg['X-Priority'] = '2'
 
