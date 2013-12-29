@@ -46,6 +46,7 @@ Usage
 
 Simply schedule the script as a Cron job or Scheduled Task.
 Please note that the script was written and tested against python 2.7.
+More info: https://www.corelan.be/index.php/2013/12/29/a-chain-is-only-as-strong-as-its-weakest-link-dns-hijack-monitoring/
 
 Disclaimer
 ----------
