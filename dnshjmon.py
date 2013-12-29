@@ -265,13 +265,17 @@ class DNSConfig:
 				thislineparts = thisline.split("=")
 				if len(thislineparts) == 2:
 					sitename = thislineparts[0]
-					siteiplist = thislineparts[1]
+					siteiplist = thislineparts[1].replace("\r","").replace("\n","")
 					if len(sitename) > 0 and len(siteiplist) > 0:
 						siteips = siteiplist.split(',')
 						if not sitename in configrecords:
 							configrecords[sitename] = siteips
 						else:
-							configrecords[sitename] += [siteips]
+							currlist = configrecords[sitename]
+							for ip in siteips:
+								if not ip in currlist:
+									currlist.append(ip)
+							configrecords[sitename] = currlist
 		return configrecords
 
 
@@ -342,7 +346,9 @@ class Mailer:
 
 		msg['Subject'] = '%s - %s' % (gethostname(),mailsubject)
 		msg['From'] = self.fromaddress
+		msg['Disposition-Notification-To'] = self.fromaddress
 		msg['To'] =  self.to
+		msg['X-Priority'] = '2'
 
 		if len(logfile) > 0:
 			part = MIMEBase('application', "octet-stream")
