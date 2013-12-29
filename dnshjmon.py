@@ -24,10 +24,10 @@ def showsyntax(args):
 	print ""
 	print " Optional arguments:"
 	print "     -h                  : show help"
-	print "     -c <configfile>     : full path to config file."
-	print "                           Defaults to dnshjmon.conf in current folder"
+	print "     -d <dns configfile> : full path to dns config file."
+	print "                           Defaults to dnshjmon_dns.conf in current folder"
 	print "     -s <smtp configfile : full path to smtp config file."
-	print "                           Defaults to dnshjmonsmtp.conf in current folder"
+	print "                           Defaults to dnshjmon_smtp.conf in current folder"
 	print "     -mail               : Test e-mail configuration"
 	print ""
 	return
@@ -352,9 +352,12 @@ class Mailer:
 # ----- main routine ----- 
 if __name__ == "__main__":
 
-	mailconfigfile = ""
-	dnsconfigfile = ""
+	mailconfigerror = True
+	dnsconfigerror = True
 	workingfolder = os.getcwd()
+
+	mailconfigfile = os.path.join(workingfolder,"dnshjmon_dns.conf")
+	dnsconfigfile = os.path.join(workingfolder,"dnshjmon_smtp.conf")
 
 	showbanner()
 
@@ -378,14 +381,7 @@ if __name__ == "__main__":
 
 	if "h" in args:
 		showsyntax(sys.argv)
-
-	if "mail" in args:
-		content = []
-		mailhandler = Mailer()
-		info = ['dnshjmon.py email test']
-		mailhandler.sendmail(info,content,'Email test')
 		sys.exit(0)
-
 
 	if "c" in args:
 		if type(args["c"]).__name__.lower() != "bool":
@@ -393,4 +389,28 @@ if __name__ == "__main__":
 
 	if "s" in args:
 		if type(args["s"]).__name__.lower() != "bool":
-			smtpconfigfile = args["s"]
+			mailconfigfile = args["s"]
+
+	if not os.path.isfile(dnsconfigfile):
+		print "[-] Configuration file %s not found, aborting..."  % dnsconfigfile
+		sys.exit(1)
+	else:
+		print "[+] Using dns config file %s" % dnsconfigfile
+
+	# check email config file
+	cEmailConfig = MailConfig(mailconfigfile)
+	if not cEmailConfig.configFileExists():
+		print "[-] Oops, email config file %s doesn't exist yet" % mailconfigfile
+		cEmailConfig.initConfigFile()
+	else:
+		print "[+] Using mail config file %s" % mailconfigfile
+		cEmailConfig.readConfigFile()
+
+
+	if "mail" in args:
+		content = []
+		mailhandler = Mailer(mailconfigfile)
+		info = ['dnshjmon.py email test']
+		mailhandler.sendmail(info,content,'Email test')
+		sys.exit(0)
+
