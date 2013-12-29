@@ -57,6 +57,31 @@ def check_port(host,port):
 	except:
 		return False
 
+
+# CIDR to IPv4 list converter, written by Moshe (https://github.com/moshekaplan)
+def to_long(ip):
+	ip = ip.split('.', 4)
+	return int(ip[0])*(2**24) + int(ip[1])*(2**16) + int(ip[2])*(2**8) + int(ip[3])
+
+def to_dotted_decimal(long_form):
+	octets = []
+	for i in range(4):
+		octets += [str(long_form % 2**8)]
+		long_form = long_form >> 8
+	return '.'.join(octets[::-1])
+
+def cidr_to_ipv4(cidr):
+	# Takes a CIDR address: 192.168.2.0/24 and returns a list of IP's in it
+	ip, network_bits = cidr.split('/',1)
+	host_bits = 32 - int(network_bits)
+	# Simplest approach: Turn it into a long, zero out the host bits and then iterate
+	long_form = to_long(ip)
+	# zero out the host bits
+	start = (long_form >> host_bits) << host_bits
+	for i in xrange(2**host_bits):
+		yield to_dotted_decimal(start | i)
+
+
 def checkdns(dnsconfigfile,mailconfigfile):
 	# get all records to test
 	print ""
@@ -269,14 +294,40 @@ class DNSConfig:
 					siteiplist = thislineparts[1].replace("\r","").replace("\n","").replace(" ","")
 					if len(sitename) > 0 and len(siteiplist) > 0:
 						siteips = siteiplist.split(',')
-						if not sitename in configrecords:
-							configrecords[sitename] = siteips
-						else:
-							currlist = configrecords[sitename]
-							for ip in siteips:
-								if not ip in currlist:
-									currlist.append(ip)
-							configrecords[sitename] = currlist
+						# explode if necessary
+						iplist = []
+						# first add IPs
+						for thisip in siteips:
+							if not thisip.startswith("-"):
+								tip = thisip.replace("\\","/")
+								if "/" in tip:
+									cidrlist = cidr_to_ipv4(tip)
+									for ip in cidrlist:
+										if not ip in iplist:
+											iplist.append(ip)
+								else:
+									if not tip in iplist:
+										iplist.append(thisip)
+
+						# then remove the ones that start with -
+						for thisip in siteips:
+							if thisip.startswith("-"):
+								tip = thisip.replace("\\","/").replace("-","")
+								if "/" in tip:
+									cidrlist = cidr_to_ipv4(tip)
+									for ip in cidrlist:
+										if ip in iplist:
+											iplist.remove(ip)
+								else:
+									if tip in iplist:
+										iplist.remove(tip)
+
+						# finally store in dictionary								
+						for thisip in iplist:
+							if not sitename in configrecords:
+								configrecords[sitename] = [thisip]
+							else:
+								configrecords[sitename].append(thisip)
 		return configrecords
 
 

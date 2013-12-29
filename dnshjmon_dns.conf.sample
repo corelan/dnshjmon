@@ -1,4 +1,6 @@
 # syntax:
 # hostname=ip
-# you can list multiple IPs per hostname (separate IPs with comma)
-www.corelan.be=178.79.152.9
+# you can list multiple IPs or CIDR per hostname (separate IPs with comma)
+# if you want to exclude an IP or CIDR, simply prefix it with a -
+# example:
+# www.corelan.be=178.79.152.6/29,-178.79.152.6
