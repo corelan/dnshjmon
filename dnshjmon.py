@@ -75,7 +75,7 @@ def checkdns(dnsconfigfile,mailconfigfile):
 	if len(toreport) > 0:
 		print ""
 		print "*" * 50
-		print "Oops, it looks like somebody has been changing DNS records:"
+		print "Somebody has been changing DNS records:"
 
 		mailbody = []
 		mailbody.append("Hi,")
