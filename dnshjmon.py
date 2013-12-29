@@ -90,7 +90,8 @@ def checkdns(dnsconfigfile,mailconfigfile):
 		mailbody.append("Report generated with dnshjmon.py - https://github.com/corelan/dnshjmon")
 		mailhandler = Mailer(mailconfigfile)
 		mailhandler.sendmail(mailbody)
-		
+	print ""
+	print "[+] Done checking, tested %d sites, reported %d IP mismatches" % (len(dnsscope),len(toreport))	
 	return
 
 # ----- classes -----
@@ -264,7 +265,7 @@ class DNSConfig:
 			if not thisline.replace(" ","")=="" and not thisline.startswith("#"):
 				thislineparts = thisline.split("=")
 				if len(thislineparts) == 2:
-					sitename = thislineparts[0]
+					sitename = thislineparts[0].replace(" ","")
 					siteiplist = thislineparts[1].replace("\r","").replace("\n","").replace(" ","")
 					if len(sitename) > 0 and len(siteiplist) > 0:
 						siteips = siteiplist.split(',')
@@ -346,7 +347,7 @@ class Mailer:
 
 		msg['Subject'] = '%s - %s' % (gethostname(),mailsubject)
 		msg['From'] = self.fromaddress
-		msg['Disposition-Notification-To'] = self.fromaddress
+		msg['Disposition-Notification-To'] = self.fromaddress	# uncomment this if you don't want return receipts
 		msg['To'] =  self.to
 		msg['X-Priority'] = '2'
 
