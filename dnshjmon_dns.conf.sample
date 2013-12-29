@@ -1,0 +1,4 @@
+# syntax:
+# hostname=ip
+# you can list multiple IPs per hostname (separate IPs with comma)
+www.corelan.be=178.79.152.9

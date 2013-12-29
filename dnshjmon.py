@@ -265,7 +265,7 @@ class DNSConfig:
 				thislineparts = thisline.split("=")
 				if len(thislineparts) == 2:
 					sitename = thislineparts[0]
-					siteiplist = thislineparts[1].replace("\r","").replace("\n","")
+					siteiplist = thislineparts[1].replace("\r","").replace("\n","").replace(" ","")
 					if len(sitename) > 0 and len(siteiplist) > 0:
 						siteips = siteiplist.split(',')
 						if not sitename in configrecords:
