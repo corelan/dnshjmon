@@ -356,8 +356,8 @@ if __name__ == "__main__":
 	dnsconfigerror = True
 	workingfolder = os.getcwd()
 
-	mailconfigfile = os.path.join(workingfolder,"dnshjmon_dns.conf")
-	dnsconfigfile = os.path.join(workingfolder,"dnshjmon_smtp.conf")
+	dnsconfigfile = os.path.join(workingfolder,"dnshjmon_dns.conf")
+	mailconfigfile = os.path.join(workingfolder,"dnshjmon_smtp.conf")
 
 	showbanner()
 
