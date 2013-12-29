@@ -11,6 +11,8 @@ from email.mime.multipart import MIMEMultipart
 from email import Encoders
 from email.MIMEBase import MIMEBase
 import socket
+from socket import gethostname
+import datetime
 
 
 
@@ -55,6 +57,41 @@ def check_port(host,port):
 	except:
 		return False
 
+def checkdns(dnsconfigfile,mailconfigfile):
+	# get all records to test
+	print ""
+	print "[+] Running DNS check"
+	toreport = []
+	cDNS = DNSConfig(dnsconfigfile)
+	dnsscope = cDNS.getConfig()
+	for dnscheck in dnsscope:
+		thisresult = socket.gethostbyname(dnscheck)
+		siteok = False
+		if thisresult in dnsscope[dnscheck]:
+			siteok = True
+		else:
+			toreport.append("%s: %s resolves to %s, but it should be %s" % (getNow(), dnscheck,thisresult,dnsscope[dnscheck]))
+		print "    Check %s OK? : %s" % (dnscheck,str(siteok).lower())
+	if len(toreport) > 0:
+		print ""
+		print "*" * 50
+		print "Oops, it looks like somebody has been changing DNS records:"
+
+		mailbody = []
+		mailbody.append("Hi,")
+		mailbody.append("")
+		mailbody.append("dnshjmon.py has detected %d DNS resolution issues:" % len(toreport))
+		mailbody.append("")
+		for tr in toreport:
+			mailbody.append(tr)
+			print tr
+		print "*" * 50
+		mailbody.append("")
+		mailbody.append("Report generated with dnshjmon.py - https://github.com/corelan/dnshjmon")
+		mailhandler = Mailer(mailconfigfile)
+		mailhandler.sendmail(mailbody)
+		
+	return
 
 # ----- classes -----
 
@@ -214,12 +251,28 @@ class DNSConfig:
 	Class to manage DNS email config
 	"""
 
-	def __init__(configfile):
+	def __init__(self,configfile):
 		self.configfile = configfile
 		return
 
 	def getConfig(self):
-		return
+		configrecords = {}
+		f = open(self.configfile,"rb")
+		contents = f.readlines()
+		f.close
+		for thisline in contents:
+			if not thisline.replace(" ","")=="" and not thisline.startswith("#"):
+				thislineparts = thisline.split("=")
+				if len(thislineparts) == 2:
+					sitename = thislineparts[0]
+					siteiplist = thislineparts[1]
+					if len(sitename) > 0 and len(siteiplist) > 0:
+						siteips = siteiplist.split(',')
+						if not sitename in configrecords:
+							configrecords[sitename] = siteips
+						else:
+							configrecords[sitename] += [siteips]
+		return configrecords
 
 
 class Mailer:
@@ -280,7 +333,7 @@ class Mailer:
 				print "    Nope"
 		return
 
-	def sendmail(self,info,logfile,mailsubject="DNS Hijack Monitor Alert"):
+	def sendmail(self,info,logfile=[],mailsubject="DNS Hijack Monitor Alert"):
 		msg = MIMEMultipart()
 		bodytext = "\n".join(x for x in info)
 		logtext =  "\n".join(x for x in logfile)
@@ -383,9 +436,9 @@ if __name__ == "__main__":
 		showsyntax(sys.argv)
 		sys.exit(0)
 
-	if "c" in args:
-		if type(args["c"]).__name__.lower() != "bool":
-			dnsconfigfile = args["c"]
+	if "d" in args:
+		if type(args["d"]).__name__.lower() != "bool":
+			dnsconfigfile = args["d"]
 
 	if "s" in args:
 		if type(args["s"]).__name__.lower() != "bool":
@@ -406,7 +459,6 @@ if __name__ == "__main__":
 		print "[+] Using mail config file %s" % mailconfigfile
 		cEmailConfig.readConfigFile()
 
-
 	if "mail" in args:
 		content = []
 		mailhandler = Mailer(mailconfigfile)
@@ -414,3 +466,4 @@ if __name__ == "__main__":
 		mailhandler.sendmail(info,content,'Email test')
 		sys.exit(0)
 
+	checkdns(dnsconfigfile,mailconfigfile)
