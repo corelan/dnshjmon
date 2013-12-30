@@ -1,0 +1,9 @@
+# nameserver configuration file
+# note: dnshjmon can only use a custom list of DNS servers
+# if the python-dnspython library is installed
+
+# syntax:
+# IP of DNS server to use, one IP per line
+# Example:
+8.8.8.8
+208.67.222.222

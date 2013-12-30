@@ -15,6 +15,16 @@ import socket
 from socket import gethostname
 import datetime
 
+global g_allowExternalResolver
+g_allowExternalResolver = False
+
+try:
+    import dns.resolver
+    g_allowExternalResolver = True
+except:
+    pass
+
+
 
 # some helper stuff
 def getNow():
@@ -26,12 +36,21 @@ def showsyntax(args):
     print " Usage: %s [arguments]" % args[0]
     print ""
     print " Optional arguments:"
-    print "     -h                  : show help"
-    print "     -d <dns configfile> : full path to dns config file."
-    print "                           Defaults to dnshjmon_dns.conf in current folder"
-    print "     -s <smtp configfile : full path to smtp config file."
-    print "                           Defaults to dnshjmon_smtp.conf in current folder"
-    print "     -mail               : Test e-mail configuration"
+    print "     -h                   : show help\n"
+    print "     -d <dns configfile>  : full path to dns config file."
+    print "                            Defaults to dnshjmon_dns.conf in current folder\n"
+    print "     -s <smtp configfile  : full path to smtp config file."
+    print "                            Defaults to dnshjmon_smtp.conf in current folder\n"
+    
+    print "     -n <dns server file> : full path to file that contains "
+    print "                            DNS server IP addresses"
+    print "                            Use this setting to overrule the default behaviour"
+    print "                            of using the OS DNS server configuration"
+    if not g_allowExternalResolver:    
+        print "     ** Note: option -n requires the python-dnspython library ** "
+        print "              (http://www.dnspython.org/)"
+    print ""
+    print "     -mail                : Test e-mail configuration"
     print ""
     return
 
@@ -84,31 +103,76 @@ def cidr_to_ipv4(cidr):
     for i in xrange(2**host_bits):
         yield to_dotted_decimal(start | i)
 
+def readDNSServerFile(dnsserverfile):
+    dnsservers = []
+    try:
+        f = open(dnsserverfile,"rb")
+        content = f.readlines()
+        f.close()
+        for dnsline in content:
+            if not dnsline.startswith('#') and dnsline.replace(" ","") != "":
+                dnsserver = dnsline.replace("\n","").replace("\r","")
+                if not dnsserver in dnsservers:
+                    dnsservers.append(dnsserver)
+    except:
+        print "[-] Unable to read DNS server file %s" % dnsserverfile
+    return dnsservers
 
-def checkdns(dnsconfigfile, mailconfigfile):
+    
+# routine to perform DNS lookups
+def checkdns(dnsconfigfile, mailconfigfile, dnsservers):
     # get all records to test
+    useOSDNS = True
     print ""
     print "[+] Running DNS check"
+    if len(dnsservers) > 0:
+        print "[+] Using %d DNS server(s) for queries:" % len(dnsservers)
+        print "    %s" % dnsservers
+        useOSDNS = False
+    else:
+        print "[+] Using OS DNS configuration for queries"
+    print "\r\nResults:"
+    print "--------"
     toreport = []
     cDNS = DNSConfig(dnsconfigfile)
-    dnsscope = cDNS.getConfig()
+    dnsscope, dnsscope_short = cDNS.getConfig()
+    dnscnt = 1
     for dnscheck in dnsscope:
+        extramsg = ""
+        allresults = []
         try:
-            thisresult = socket.gethostbyname(dnscheck)
-        except:
-            print "    *** Error looking up IP for %s***" % dnscheck
-            thisresult = "0.0.0.0"
-        siteok = False
-        if thisresult in dnsscope[dnscheck]:
-            siteok = True
-        else:
-            toreport.append("%s: %s resolves to %s, but it should be %s" %
-                            (getNow(), dnscheck, thisresult, dnsscope[dnscheck]))
-        print "    Check %s OK? : %s" % (dnscheck, str(siteok).lower())
+            if useOSDNS:
+                allresults = [socket.gethostbyname(dnscheck)]
+            else:
+                r = dns.resolver.Resolver()
+                r.nameservers = dnsservers
+                dnsdata = r.query(dnscheck)
+                for rdata in dnsdata:
+                    thisresult = rdata.address
+                    if not thisresult in allresults:
+                        allresults.append(thisresult)
+            extramsg = "(%s) " % allresults
+        except:  
+            allresults = ["?.?.?.? (unable to resolve)"]
+            extramsg = "(Error looking up IP)"
+        siteok = True
+        for thisresult in allresults:
+            if not thisresult in dnsscope[dnscheck]:
+                siteok = False
+                extramsg = "(%s : Record manipulated?)" % allresults
+                toreport.append("%s: %s resolves to %s, but it should be %s" %
+                                (getNow(), dnscheck, thisresult, dnsscope_short[dnscheck]))
+        print "%d. %s - check OK? : %s %s" % (dnscnt,dnscheck, str(siteok).lower(), extramsg)
+        dnscnt += 1
+        
+    print ""
+    print "[+] Done checking, tested %d sites, reported %d IP mismatches" % \
+          (len(dnsscope), len(toreport))
+          
     if len(toreport) > 0:
         print ""
         print "*" * 50
-        print "Somebody has been changing DNS records:"
+        print "%d DNS record(s) may have been manipulated:" % len(toreport)
 
         mailbody = []
         mailbody.append("Hi,")
@@ -123,9 +187,7 @@ def checkdns(dnsconfigfile, mailconfigfile):
         mailbody.append("Report generated with dnshjmon.py - https://github.com/corelan/dnshjmon")
         mailhandler = Mailer(mailconfigfile)
         mailhandler.sendmail(mailbody)
-    print ""
-    print "[+] Done checking, tested %d sites, reported %d IP mismatches" % \
-          (len(dnsscope), len(toreport))
+
     return
 
 
@@ -292,6 +354,7 @@ class DNSConfig:
 
     def getConfig(self):
         configrecords = {}
+        configrecords_short = {}
         f = open(self.configfile, "rb")
         contents = f.readlines()
         f.close
@@ -317,7 +380,10 @@ class DNSConfig:
                                 else:
                                     if not tip in iplist:
                                         iplist.append(thisip)
-
+                            if not sitename in configrecords_short:
+                                configrecords_short[sitename] = [thisip]
+                            else:
+                                configrecords_short[sitename].append(thisip)
                         # then remove the ones that start with -
                         for thisip in siteips:
                             if thisip.startswith("-"):
@@ -337,7 +403,7 @@ class DNSConfig:
                                 configrecords[sitename] = [thisip]
                             else:
                                 configrecords[sitename].append(thisip)
-        return configrecords
+        return configrecords, configrecords_short
 
 
 class Mailer:
@@ -478,7 +544,9 @@ if __name__ == "__main__":
 
     dnsconfigfile = os.path.join(workingfolder, "dnshjmon_dns.conf")
     mailconfigfile = os.path.join(workingfolder, "dnshjmon_smtp.conf")
-
+    dnsserverfile = ""
+    dnsservers = []
+    
     showbanner()
 
     arguments = []
@@ -511,12 +579,22 @@ if __name__ == "__main__":
         if type(args["s"]).__name__.lower() != "bool":
             mailconfigfile = args["s"]
 
+    if "n" in args and g_allowExternalResolver:
+        if type(args["n"]).__name__.lower() != "bool":
+            dnsserverfile = args["n"]
+            if not os.path.isfile(dnsserverfile):
+                print "[-] DNS server file %s not found, will use OS DNS configuration" % dnsserverfile
+                dnsserverfile = ""
+            else:
+                dnsservers = readDNSServerFile(dnsserverfile)
+            
     if not os.path.isfile(dnsconfigfile):
         print "[-] Configuration file %s not found, aborting..." % dnsconfigfile
         sys.exit(1)
     else:
         print "[+] Using dns config file %s" % dnsconfigfile
 
+        
     # check email config file
     cEmailConfig = MailConfig(mailconfigfile)
     if not cEmailConfig.configFileExists():
@@ -533,4 +611,4 @@ if __name__ == "__main__":
         mailhandler.sendmail(info, content, 'Email test')
         sys.exit(0)
 
-    checkdns(dnsconfigfile, mailconfigfile)
+    checkdns(dnsconfigfile, mailconfigfile, dnsservers)
