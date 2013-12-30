@@ -10,13 +10,22 @@ python dnshjmon.py [arguments]
 
 Valid arguments:
 
+     -h                   : show help
 
-    -h                  : show help
-    -d <dns configfile> : full path to dns config file.
-                          Defaults to dnshjmon_dns.conf in current folder
-    -s <smtp configfile : full path to smtp config file.
-                          Defaults to dnshjmon_smtp.conf in current folder
-    -mail               : Test e-mail configuration
+     -d <dns configfile>  : full path to dns config file.
+                            Defaults to dnshjmon_dns.conf in current folder
+
+     -s <smtp configfile  : full path to smtp config file.
+                            Defaults to dnshjmon_smtp.conf in current folder
+
+     -n <dns server file> : full path to file that contains
+                            DNS server IP addresses
+                            Use this setting to overrule the default behaviour
+                            of using the OS DNS server configuration
+     ** Note: option -n requires the python-dnspython library **
+              (http://www.dnspython.org/)
+
+     -mail                : Test e-mail configuration
 
 
 DNS Config file
@@ -40,6 +49,13 @@ This file (dnshjmon_smtp.conf) will be created the first time you run dnshjmon.p
 If you want to add additional mailserver configurations or change the existing one, simply edit the conf file.
 You can test if the mail configuration works correctly by using the `-mail` argument.
 By default, emails will be sent with high-priority and requesting a return-receipt.
+
+
+Custom nameservers
+------------------
+By default, dnshjmon will use the OS DNS configuration. If you want to use specific nameservers, you'll need to install the python-dnspython library.  dnshjmon will automatically detect if the library is present and allow you to use the -n option.
+Using -n, you can specify the location of a flat ascii file that contains the IP addresses of the nameservers to use.
+
 
 Usage
 -----
